@@ -1,0 +1,17 @@
+{
+    "name": "afancylab/user-laravel",
+    "description": "User management library for laravel",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "User\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Muhammad Mahmudul Hasan Mithu",
+            "email": "imithu@imithu.org"
+        }
+    ],
+    "require": {}
+}
