@@ -13,5 +13,7 @@
             "email": "imithu@imithu.org"
         }
     ],
-    "require": {}
+    "require": {
+        "firebase/php-jwt": "^6.3"
+    }
 }
