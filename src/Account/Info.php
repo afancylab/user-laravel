@@ -189,4 +189,43 @@ class Info
 	}
 
 
+	/**
+	 * delete info
+	 * 
+	 * @param array $keys
+	 * 
+	 * @return array [ keys ]
+	 * 
+	 * @since   🌱 0.1.0
+	 * @version 🌴 0.1.0
+	 * @author  ✍ Muhammad Mahmudul Hasan Mithu
+	 */
+	public function delete(array $keys): array
+	{
+		$nullable = config('user.info.nullable', []);
+		$keys = collect($keys)->map(fn($e)=>htmlspecialchars(strtolower(trim($e))))->unique()->intersect(collect($this->endorsement))->intersect($nullable);
+		$file_keys = $keys->intersect(collect($this->file_names)->keys())->values()->toArray();
+		$keys = $keys->toArray();
+
+		if($keys){
+			// delete current files from storage
+			if($file_keys){
+				$file_values = User::where('id', $this->user_id)->first($file_keys)?->toArray();
+				if($file_values){
+					foreach($file_values as $key=>$value){
+						if($value) Storage::delete("$this->file_path/$key/$value");
+					}
+				}
+			}
+
+			// delete data from database
+			$keyvalue = [];
+			foreach($keys as $key) $keyvalue[$key] = null;
+			User::where('id', $this->user_id)->update($keyvalue);
+		}
+
+		return $keys;
+	}
+
+
 }
