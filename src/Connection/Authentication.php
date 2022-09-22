@@ -20,14 +20,13 @@ class Authentication
 	 *                      - object - success
 	 * 
 	 * @since   🌱 0.0.0
-	 * @version 🌴 0.0.0
+	 * @version 🌴 0.1.0
 	 * @author  ✍ Muhammad Mahmudul Hasan Mithu
 	 */
 	public static function main( string $token )
 	{
-		$key = Login::where('token', $token)->value('token_key');
-		if($key) return JWT::decode($token, $key);
-
+		if($token && $key = Login::where('token', $token)->value('token_key'))
+		return JWT::decode($token, $key);
 		return false;
 	}
 
