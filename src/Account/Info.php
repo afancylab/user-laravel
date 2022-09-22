@@ -63,58 +63,60 @@ class Info
 	 * 
 	 * @param array [ key => value ]
 	 * 
-	 * @return bool
+	 * @return array
 	 * 
 	 * @since   🌱 0.0.0
-	 * @version 🌴 0.0.0
+	 * @version 🌴 0.1.0
 	 * @author  ✍ Muhammad Mahmudul Hasan Mithu
 	 */
-	public function set(array $pairs): bool
+	public function set(array $pairs): array
 	{
-		$pairs = collect($pairs)->mapWithKeys(function($e, $k){
-			if(gettype($k)==='string') $k = htmlspecialchars(strtolower(trim($k)));
-			return [$k=>$e];
-		})->filter(fn($v, $k)=>collect($this->endorsement)->contains($k));
-		$file_keys = $pairs->intersectByKeys($this->file_names)->keys()->toArray();
-		$pairs = $pairs->toArray();
+		$file_keys = [];
+		$config_file_names_only = collect($this->file_names)->keys()->toArray();
+		$pairs = collect($pairs)->mapWithKeys(function($e, $k)use($config_file_names_only, &$file_keys){
+			if(is_string($k) && ($e || is_bool($e) || is_numeric($e))){
+				$k = htmlspecialchars(strtolower(trim($k)));
+				if(in_array($k, $this->endorsement)){
+					/** validate value */
+					switch($k){
+						case in_array($k, $config_file_names_only):
+							if(is_object($e) && $e->extension() && $e->path() && in_array($e->extension(), $this->file_names[$k]['extensions'], true)){
+								$file_keys[] = $k;
+								// store new files in storage
+								$filename = STR::random(40).'.'.$e->extension();
+								Storage::putFileAs("$this->file_path/$k/", $e->path(), $filename);
+								return [$k=>$filename];
+							}
+							break;
+						case 'username':
+							if(Syntax::username($e) && self::getId($e, 'u')===0) return [$k=>$e];
+							break;
+						case 'email':
+							if(Syntax::email($e) && self::getId($e, 'e')===0) return [$k=>$e];
+							break;
+						case 'password':
+							if(Password::entropy($e)>50) return [$k=>password_hash($e, PASSWORD_DEFAULT)];
+							break;
+						default:
+						return [$k=>$e];
+					}
+				}
+			}
+			return [];
+		})->toArray();
 
-		// remove current files
+		// delete current files from storage
 		if($file_keys){
-			$file_values = User::where('id', $this->user_id)->first($file_keys)->toArray();
-			foreach($file_values as $key=>$value){
-				if($value) Storage::delete("$this->file_path/$key/$value");
+			$file_values = User::where('id', $this->user_id)->first($file_keys)?->toArray();
+			if($file_values){
+				foreach($file_values as $key=>$value){
+					if($value) Storage::delete("$this->file_path/$key/$value");
+				}
 			}
 		}
 
-		// process info
-		foreach($pairs as $key=>$value){
-			if(in_array($key, ['username', 'email', 'password'])){
-				switch($key){
-					case 'username':
-						if(!(Syntax::username($value) && self::getId($value, 'u')===0))
-						return false;
-						break;
-					case 'email':
-						if(!(Syntax::email($value) && self::getId($value, 'u')===0))
-						return false;
-						break;
-					case 'password':
-						if(Password::entropy($value)<51) return false;
-						else $pairs[$key] = password_hash($value, PASSWORD_DEFAULT);
-						break;
-				}
-			}
-			else if(in_array($key, $file_keys)){
-				if(gettype($value)==='object' && $value->extension() && $value->path() && in_array($value->extension(), $this->file_names[$key]['extensions'], true)){
-					$filename = STR::random(40).'.'.$value->extension();
-					Storage::putFileAs("$this->file_path/$key/", $value->path(), $filename);
-					$pairs[$key] = $filename;
-				}
-				else $pairs[$key] = null;
-			}
-		}
-
-		return (bool) User::where('id', $this->user_id)->update($pairs);
+		if($pairs) User::where('id', $this->user_id)->update($pairs);
+		return array_keys($pairs);
 	}
 
 
